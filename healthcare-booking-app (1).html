@@ -1,0 +1,1554 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>نظام حجز المواعيد الصحية</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --primary: #2563EB;
+    --primary-light: #EFF6FF;
+    --primary-dark: #1d4ed8;
+    --bg: #F5F7FA;
+    --card: #FFFFFF;
+    --text: #1E293B;
+    --text2: #64748B;
+    --success: #16A34A;
+    --success-light: #F0FDF4;
+    --error: #DC2626;
+    --error-light: #FEF2F2;
+    --border: rgba(0,0,0,0.08);
+    --shadow-sm: 0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.05);
+    --shadow-md: 0 4px 12px rgba(0,0,0,0.10), 0 2px 4px rgba(0,0,0,0.06);
+    --shadow-lg: 0 10px 30px rgba(0,0,0,0.12), 0 4px 8px rgba(0,0,0,0.07);
+    --shadow-xl: 0 20px 50px rgba(0,0,0,0.15);
+    --radius-sm: 12px;
+    --radius-md: 16px;
+    --radius-lg: 20px;
+    --radius-xl: 24px;
+    --radius-full: 9999px;
+  }
+
+  body {
+    font-family: 'IBM Plex Sans Arabic', sans-serif;
+    background: #E8ECF0;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+  }
+
+  /* ── Phone Frame ── */
+  .phone-wrapper {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+  }
+
+  .phone-frame {
+    width: 390px;
+    height: 844px;
+    background: #1a1a2e;
+    border-radius: 52px;
+    padding: 12px;
+    box-shadow:
+      0 0 0 1px rgba(255,255,255,0.08),
+      0 40px 80px rgba(0,0,0,0.5),
+      inset 0 1px 0 rgba(255,255,255,0.12);
+    position: relative;
+  }
+
+  .phone-notch {
+    position: absolute;
+    top: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 120px;
+    height: 36px;
+    background: #1a1a2e;
+    border-radius: 20px;
+    z-index: 100;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+  }
+  .phone-notch::before {
+    content: '';
+    width: 12px; height: 12px;
+    background: #2a2a3e;
+    border-radius: 50%;
+    border: 2px solid #3a3a4e;
+  }
+  .phone-notch::after {
+    content: '';
+    width: 40px; height: 6px;
+    background: #2a2a3e;
+    border-radius: 4px;
+  }
+
+  .phone-screen {
+    width: 100%;
+    height: 100%;
+    background: var(--bg);
+    border-radius: 42px;
+    overflow: hidden;
+    position: relative;
+  }
+
+  /* ── Screens Container ── */
+  .screens {
+    width: 100%;
+    height: 100%;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .screen {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    opacity: 0;
+    pointer-events: none;
+    transform: translateX(-30px);
+    transition: opacity 0.35s ease, transform 0.35s ease;
+    overflow-y: auto;
+    overflow-x: hidden;
+    scrollbar-width: none;
+  }
+  .screen::-webkit-scrollbar { display: none; }
+  .screen.active {
+    opacity: 1;
+    pointer-events: all;
+    transform: translateX(0);
+  }
+  .screen.slide-out {
+    opacity: 0;
+    transform: translateX(30px);
+    transition: opacity 0.25s ease, transform 0.25s ease;
+  }
+
+  /* ── Navigation Bar ── */
+  .nav-bar {
+    display: flex;
+    gap: 0;
+    background: #fff;
+    border-radius: 16px;
+    padding: 4px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  .nav-btn {
+    background: none;
+    border: none;
+    font-family: 'IBM Plex Sans Arabic', sans-serif;
+    font-size: 12px;
+    color: #64748B;
+    padding: 8px 10px;
+    border-radius: 12px;
+    cursor: pointer;
+    transition: all 0.2s;
+    white-space: nowrap;
+  }
+  .nav-btn:hover { background: var(--primary-light); color: var(--primary); }
+  .nav-btn.active { background: var(--primary); color: white; }
+
+  /* ── Shared Components ── */
+  .btn {
+    width: 100%;
+    border: none;
+    border-radius: var(--radius-lg);
+    padding: 18px 24px;
+    font-family: 'IBM Plex Sans Arabic', sans-serif;
+    font-size: 20px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: transform 0.15s ease, box-shadow 0.15s ease, opacity 0.15s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    min-height: 64px;
+  }
+  .btn:active { transform: scale(0.97); }
+  .btn-primary { background: var(--primary); color: white; box-shadow: 0 4px 16px rgba(37,99,235,0.35); }
+  .btn-primary:hover { box-shadow: 0 6px 20px rgba(37,99,235,0.45); }
+  .btn-success { background: var(--success); color: white; box-shadow: 0 4px 16px rgba(22,163,74,0.35); }
+  .btn-outline { background: white; color: var(--primary); border: 2.5px solid var(--primary); }
+  .btn-outline-gray { background: white; color: var(--text); border: 2px solid #CBD5E1; }
+  .btn-disabled { background: #E2E8F0; color: #94A3B8; cursor: not-allowed; border: 2px solid #CBD5E1; }
+  .btn-disabled:active { transform: none; }
+
+  .ai-card {
+    background: var(--primary-light);
+    border: 2px solid rgba(37,99,235,0.2);
+    border-radius: var(--radius-lg);
+    padding: 16px 18px;
+  }
+  .ai-card .ai-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+  }
+  .ai-card .ai-text { font-size: 16px; color: var(--text); line-height: 1.6; }
+
+  .sparkle-icon {
+    width: 20px; height: 20px;
+    flex-shrink: 0;
+    color: var(--primary);
+    margin-top: 2px;
+  }
+
+  .card {
+    background: var(--card);
+    border-radius: var(--radius-xl);
+    box-shadow: var(--shadow-md);
+    padding: 24px;
+  }
+
+  .icon-box {
+    width: 56px; height: 56px;
+    border-radius: var(--radius-md);
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+
+  /* ── Status Bar ── */
+  .status-bar {
+    padding: 50px 24px 0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-shrink: 0;
+  }
+  .status-time { font-size: 16px; font-weight: 600; color: var(--text); }
+  .status-icons { display: flex; gap: 6px; align-items: center; }
+  .status-icons svg { width: 16px; height: 16px; fill: var(--text); }
+
+  /* ── Header with back btn ── */
+  .screen-header {
+    padding: 16px 24px 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-shrink: 0;
+  }
+  .back-btn {
+    width: 48px; height: 48px;
+    background: white;
+    border: none;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer;
+    box-shadow: var(--shadow-sm);
+    transition: transform 0.15s;
+    flex-shrink: 0;
+  }
+  .back-btn:active { transform: scale(0.92); }
+  .screen-title { font-size: 22px; font-weight: 600; color: var(--text); }
+
+  /* ── Progress Dots ── */
+  .progress-dots { display: flex; gap: 8px; justify-content: center; }
+  .dot { width: 10px; height: 10px; border-radius: 50%; background: #CBD5E1; }
+  .dot.active { background: var(--primary); }
+
+  /* ══════════════════════════════
+     SCREEN 1 — WELCOME
+  ══════════════════════════════ */
+  #screen-welcome {
+    background: var(--bg);
+    padding: 0 0 0 0;
+  }
+  .welcome-body {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 0 32px 24px;
+  }
+  .hero-illustration {
+    position: relative;
+    margin-bottom: 32px;
+    width: 200px;
+    height: 200px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .hero-ring-outer {
+    position: absolute;
+    width: 200px; height: 200px;
+    background: rgba(37,99,235,0.07);
+    border-radius: 50%;
+  }
+  .hero-ring-mid {
+    position: absolute;
+    width: 160px; height: 160px;
+    background: rgba(37,99,235,0.10);
+    border-radius: 50%;
+  }
+  .hero-circle {
+    position: relative;
+    z-index: 2;
+    width: 130px; height: 130px;
+    background: var(--primary);
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    box-shadow: 0 8px 32px rgba(37,99,235,0.4);
+  }
+  .hero-circle svg { width: 65px; height: 65px; fill: white; }
+  .ai-badge {
+    position: absolute;
+    bottom: -8px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: white;
+    border-radius: 20px;
+    padding: 6px 16px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    box-shadow: var(--shadow-md);
+    border: 2px solid var(--primary);
+    white-space: nowrap;
+    z-index: 10;
+  }
+  .ai-badge svg { width: 16px; height: 16px; color: var(--primary); }
+  .ai-badge span { font-size: 13px; font-weight: 700; color: var(--primary); }
+  .welcome-title { font-size: 32px; font-weight: 700; color: var(--text); text-align: center; margin-bottom: 12px; line-height: 1.4; }
+  .welcome-sub { font-size: 18px; color: var(--text2); text-align: center; line-height: 1.6; margin-bottom: 24px; max-width: 280px; }
+  .welcome-helper {
+    background: var(--primary-light);
+    border: 2px solid rgba(37,99,235,0.2);
+    border-radius: var(--radius-lg);
+    padding: 20px;
+    text-align: center;
+    width: 100%;
+    max-width: 300px;
+  }
+  .welcome-helper p { font-size: 16px; color: var(--text); line-height: 1.6; }
+  .welcome-actions { padding: 0 32px 40px; display: flex; flex-direction: column; gap: 14px; flex-shrink: 0; }
+
+  /* ── Font Size Button ── */
+  .font-size-btn {
+    width: 100%; border: none; border-radius: var(--radius-lg);
+    padding: 16px 24px; min-height: 60px;
+    font-family: 'IBM Plex Sans Arabic', sans-serif;
+    font-weight: 600; cursor: pointer;
+    display: flex; align-items: center; justify-content: space-between;
+    background: white; border: 2.5px solid #E2E8F0;
+    box-shadow: var(--shadow-sm);
+    transition: border-color 0.2s, box-shadow 0.2s, transform 0.15s;
+    color: var(--text);
+  }
+  .font-size-btn:hover { border-color: var(--primary); box-shadow: var(--shadow-md); }
+  .font-size-btn:active { transform: scale(0.97); }
+  .font-size-btn-left { display: flex; align-items: center; gap: 10px; }
+  .font-size-btn-left svg { width: 22px; height: 22px; stroke: var(--primary); fill: none; flex-shrink: 0; }
+  .font-size-btn-label { font-size: 18px; }
+  .font-size-controls { display: flex; align-items: center; gap: 10px; }
+  .fsize-circle {
+    width: 40px; height: 40px; border-radius: 50%; border: 2.5px solid var(--primary);
+    background: var(--primary-light); color: var(--primary);
+    font-size: 22px; font-weight: 700; line-height: 1;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer; transition: background 0.2s, transform 0.15s;
+    user-select: none; flex-shrink: 0;
+  }
+  .fsize-circle:hover { background: var(--primary); color: white; }
+  .fsize-circle:active { transform: scale(0.88); }
+  .fsize-current {
+    min-width: 44px; text-align: center;
+    font-size: 17px; font-weight: 700; color: var(--primary);
+    background: var(--primary-light); border-radius: 10px;
+    padding: 4px 8px;
+  }
+
+  /* ══════════════════════════════
+     SCREEN 2 — OVERVIEW
+  ══════════════════════════════ */
+  #screen-overview {
+    background: var(--bg);
+    padding: 0;
+  }
+  .overview-body { flex: 1; padding: 0 24px 24px; display: flex; flex-direction: column; }
+  .overview-header { margin-bottom: 20px; }
+  .overview-title-row { display: flex; align-items: center; gap: 12px; margin-bottom: 10px; }
+  .overview-icon { width: 44px; height: 44px; background: var(--primary); border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 12px rgba(37,99,235,0.35); }
+  .overview-icon svg { width: 22px; height: 22px; fill: white; }
+  .overview-main-title { font-size: 28px; font-weight: 700; color: var(--text); }
+  .overview-subtitle { font-size: 17px; color: var(--text2); line-height: 1.6; }
+  .ai-helper-card {
+    background: var(--primary-light);
+    border: 2px solid rgba(37,99,235,0.2);
+    border-radius: var(--radius-lg);
+    padding: 18px;
+    margin-bottom: 20px;
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+  }
+  .ai-helper-card .ai-inner { flex: 1; }
+  .ai-helper-card .ai-title { font-size: 17px; font-weight: 700; color: var(--text); margin-bottom: 4px; }
+  .ai-helper-card .ai-sub { font-size: 15px; color: var(--text2); line-height: 1.6; }
+  .volume-btn {
+    width: 40px; height: 40px;
+    background: rgba(37,99,235,0.12);
+    border: none; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer; flex-shrink: 0;
+    transition: background 0.2s;
+  }
+  .volume-btn:hover { background: rgba(37,99,235,0.2); }
+  .volume-btn svg { width: 20px; height: 20px; stroke: var(--primary); fill: none; }
+
+  .steps-card { background: white; border-radius: var(--radius-xl); padding: 28px; box-shadow: var(--shadow-md); margin-bottom: 24px; }
+  .step-row { display: flex; align-items: center; gap: 20px; }
+  .step-row + .step-row { margin-top: 24px; }
+  .step-icon-wrap { width: 60px; height: 60px; background: rgba(37,99,235,0.1); border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .step-icon-wrap svg { width: 30px; height: 30px; stroke: var(--primary); fill: none; stroke-width: 2; }
+  .step-label { flex: 1; font-size: 18px; color: var(--text); font-weight: 500; }
+  .step-num { width: 40px; height: 40px; background: var(--primary); border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .step-num span { color: white; font-size: 18px; font-weight: 700; }
+
+  /* ══════════════════════════════
+     SCREEN 3 — SELECT HOSPITAL
+  ══════════════════════════════ */
+  #screen-hospital { background: var(--bg); }
+  .search-wrap { position: relative; margin: 0 24px 16px; }
+  .search-input {
+    width: 100%; background: white; border: none;
+    border-radius: var(--radius-lg); padding: 16px 20px 16px 52px;
+    font-family: 'IBM Plex Sans Arabic', sans-serif;
+    font-size: 17px; color: var(--text);
+    box-shadow: var(--shadow-sm);
+    outline: none;
+  }
+  .search-input::placeholder { color: var(--text2); }
+  .search-icon {
+    position: absolute; left: 18px; top: 50%; transform: translateY(-50%);
+    width: 22px; height: 22px; stroke: var(--text2); fill: none; stroke-width: 2;
+    pointer-events: none;
+  }
+
+  .hospital-list { flex: 1; padding: 0 24px; overflow-y: auto; display: flex; flex-direction: column; gap: 16px; }
+  .hospital-card {
+    background: white; border-radius: 24px;
+    padding: 22px; box-shadow: var(--shadow-md);
+    cursor: pointer; border: 3px solid transparent;
+    transition: border-color 0.2s, box-shadow 0.2s;
+    display: flex; align-items: center; gap: 18px;
+  }
+  .hospital-card:hover { box-shadow: var(--shadow-lg); }
+  .hospital-card.selected { border-color: var(--primary); box-shadow: 0 0 0 4px rgba(37,99,235,0.12); }
+  .hospital-icon {
+    width: 64px; height: 64px; border-radius: 18px;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0; background: rgba(37,99,235,0.1);
+    transition: background 0.2s;
+    position: relative;
+  }
+  .hospital-card.selected .hospital-icon { background: var(--primary); }
+  .hospital-icon svg { width: 34px; height: 34px; stroke: var(--primary); fill: none; stroke-width: 1.8; }
+  .hospital-card.selected .hospital-icon svg { stroke: white; }
+  .hospital-info { flex: 1; }
+  .hospital-name { font-size: 19px; font-weight: 600; color: var(--text); margin-bottom: 8px; }
+  .hospital-meta { display: flex; align-items: center; gap: 12px; }
+  .hospital-dist { display: flex; align-items: center; gap: 6px; color: var(--text2); font-size: 15px; }
+  .hospital-dist svg { width: 16px; height: 16px; stroke: var(--text2); fill: none; stroke-width: 2; }
+  .hospital-rating { font-size: 14px; color: var(--success); font-weight: 600; }
+  .check-badge {
+    width: 40px; height: 40px; background: var(--success); border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0; box-shadow: 0 4px 12px rgba(22,163,74,0.35);
+  }
+  .check-badge svg { width: 22px; height: 22px; stroke: white; fill: none; stroke-width: 3; }
+  .screen-footer { padding: 16px 24px 32px; flex-shrink: 0; }
+
+  /* ══════════════════════════════
+     SCREEN 4 — SELECT DATE
+  ══════════════════════════════ */
+  #screen-date { background: var(--bg); }
+  .calendar-wrap { flex: 1; padding: 0 24px 16px; overflow-y: auto; }
+  .cal-card { background: white; border-radius: 24px; padding: 24px; box-shadow: var(--shadow-md); }
+  .cal-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
+  .cal-nav { width: 40px; height: 40px; border: none; background: none; cursor: pointer; display: flex; align-items: center; justify-content: center; border-radius: 50%; transition: background 0.2s; }
+  .cal-nav:hover { background: #F1F5F9; }
+  .cal-nav svg { width: 22px; height: 22px; stroke: var(--text); fill: none; stroke-width: 2.5; }
+  .cal-month { font-size: 20px; font-weight: 600; color: var(--text); }
+  .cal-dow { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; margin-bottom: 8px; }
+  .cal-dow-cell { text-align: center; font-size: 10px; font-weight: 600; color: var(--text); padding: 6px 0; }
+  .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
+  .cal-day {
+    aspect-ratio: 1; border: none; border-radius: 12px;
+    font-family: 'IBM Plex Sans Arabic', sans-serif;
+    font-size: 18px; font-weight: 700;
+    cursor: pointer; display: flex; align-items: center; justify-content: center;
+    transition: all 0.15s;
+  }
+  .cal-day.empty { background: none; cursor: default; }
+  .cal-day.available { background: rgba(37,99,235,0.1); color: var(--text); }
+  .cal-day.available:hover { background: rgba(37,99,235,0.2); }
+  .cal-day.available:active { transform: scale(0.92); }
+  .cal-day.unavailable { background: #F1F5F9; color: #CBD5E1; cursor: not-allowed; }
+  .cal-day.selected { background: var(--success); color: white; transform: scale(1.07); box-shadow: 0 4px 12px rgba(22,163,74,0.4); }
+  .selected-info {
+    margin-top: 20px; background: var(--primary-light);
+    border: 2px solid rgba(37,99,235,0.2); border-radius: 14px; padding: 16px; text-align: center;
+  }
+  .selected-info .label { font-size: 15px; color: var(--text2); margin-bottom: 4px; }
+  .selected-info .value { font-size: 20px; font-weight: 700; color: var(--text); }
+  .cal-legend { margin-top: 20px; padding-top: 20px; border-top: 1px solid #E2E8F0; display: flex; flex-direction: column; gap: 10px; }
+  .legend-row { display: flex; align-items: center; gap: 10px; justify-content: flex-end; }
+  .legend-row span { font-size: 15px; color: var(--text2); }
+  .legend-dot { width: 24px; height: 24px; border-radius: 6px; }
+  .two-btn-footer { padding: 16px 24px 32px; display: flex; gap: 12px; flex-shrink: 0; }
+  .two-btn-footer .btn { flex: 1; }
+
+  /* ══════════════════════════════
+     SCREEN 5 — AI GUIDANCE
+  ══════════════════════════════ */
+  #screen-ai { background: var(--bg); }
+  .ai-screen-header {
+    padding: 16px 24px 12px;
+    display: flex; flex-direction: column; align-items: center;
+    flex-shrink: 0;
+  }
+  .ai-title-row { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; }
+  .ai-icon { width: 44px; height: 44px; background: var(--primary); border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 14px rgba(37,99,235,0.35); }
+  .ai-icon svg { width: 22px; height: 22px; stroke: white; fill: none; }
+  .ai-main-title { font-size: 26px; font-weight: 700; color: var(--text); }
+  .ai-screen-sub { font-size: 15px; color: var(--text2); }
+
+  .ai-content { flex: 1; padding: 0 24px; overflow-y: auto; }
+
+  .speech-bubble {
+    background: white; border-radius: 24px;
+    padding: 24px; box-shadow: var(--shadow-xl);
+    border: 2px solid rgba(37,99,235,0.18);
+    margin-bottom: 18px;
+  }
+  .bubble-top { display: flex; align-items: flex-start; gap: 14px; margin-bottom: 16px; }
+  .bubble-check svg { width: 28px; height: 28px; stroke: var(--success); fill: none; stroke-width: 2.5; flex-shrink: 0; }
+  .bubble-main { font-size: 19px; font-weight: 700; color: var(--text); line-height: 1.5; margin-bottom: 6px; }
+  .bubble-sub { font-size: 17px; color: var(--text2); line-height: 1.6; }
+  .why-box {
+    background: var(--primary-light); border: 2px solid rgba(37,99,235,0.2);
+    border-radius: 14px; padding: 16px;
+  }
+  .why-title { display: flex; align-items: center; gap: 8px; font-size: 15px; font-weight: 700; color: var(--primary); margin-bottom: 10px; }
+  .why-title svg { width: 18px; height: 18px; stroke: var(--primary); fill: none; }
+  .why-list { font-size: 15px; color: var(--text); line-height: 2; padding-right: 8px; }
+
+  .bounce-arrow {
+    display: flex; justify-content: center; margin-bottom: 14px;
+    animation: bounce 1.5s infinite;
+  }
+  .bounce-arrow svg { width: 32px; height: 32px; stroke: var(--primary); fill: none; stroke-width: 3; }
+  @keyframes bounce {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(6px); }
+  }
+
+  .step-label-row { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
+  .step-badge { width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .step-badge.blue { background: var(--primary); }
+  .step-badge.green { background: var(--success); }
+  .step-badge span { color: white; font-size: 15px; font-weight: 700; }
+  .step-label-text { font-size: 18px; font-weight: 700; color: var(--text); }
+
+  .details-highlight {
+    position: relative; margin-bottom: 20px;
+  }
+  .highlight-ring {
+    position: absolute; inset: -4px;
+    background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+    border-radius: 28px; opacity: 0.18;
+    animation: pulse 2s infinite;
+  }
+  @keyframes pulse { 0%, 100% { opacity: 0.18; } 50% { opacity: 0.30; } }
+
+  .details-inner { position: relative; background: white; border-radius: 24px; padding: 28px; box-shadow: var(--shadow-lg); }
+  .detail-row + .detail-row { margin-top: 20px; padding-top: 20px; border-top: 1px solid #F1F5F9; }
+  .detail-label { font-size: 15px; color: var(--text2); margin-bottom: 6px; }
+  .detail-value { font-size: 22px; font-weight: 700; color: var(--text); }
+
+  .ai-footer {
+    padding: 12px 24px 28px; flex-shrink: 0;
+    background: linear-gradient(to top, var(--bg) 70%, transparent);
+  }
+  .confirm-btn-wrap { position: relative; margin-bottom: 14px; }
+  .glow-ring {
+    position: absolute; inset: -4px;
+    background: linear-gradient(135deg, var(--success), #22c55e);
+    border-radius: 24px; opacity: 0.35;
+    filter: blur(8px);
+    animation: pulse 2s infinite;
+  }
+
+  /* ══════════════════════════════
+     SCREEN 6 — SUCCESS
+  ══════════════════════════════ */
+  #screen-success { background: linear-gradient(180deg, var(--success-light) 0%, var(--bg) 40%); }
+  .success-top { padding: 16px 24px 8px; text-align: center; flex-shrink: 0; }
+  .success-icon-wrap { position: relative; width: 100px; height: 100px; margin: 0 auto 16px; display: flex; align-items: center; justify-content: center; }
+  .success-pulse { position: absolute; width: 110px; height: 110px; background: rgba(22,163,74,0.2); border-radius: 50%; animation: pulse 2s infinite; }
+  .success-circle { position: relative; z-index: 2; width: 90px; height: 90px; background: var(--success); border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 8px 28px rgba(22,163,74,0.45); }
+  .success-circle svg { width: 52px; height: 52px; stroke: white; fill: none; stroke-width: 2.5; }
+  .success-title { font-size: 26px; font-weight: 700; color: var(--success); margin-bottom: 4px; }
+  .success-sub { font-size: 15px; color: var(--text2); }
+
+  .success-content { flex: 1; padding: 0 24px; overflow-y: auto; }
+  .success-ai-card {
+    background: white; border: 2px solid #BBF7D0;
+    border-radius: 24px; padding: 18px; box-shadow: var(--shadow-md);
+    display: flex; align-items: flex-start; gap: 14px; margin-bottom: 16px;
+  }
+  .success-ai-icon { width: 44px; height: 44px; background: rgba(22,163,74,0.1); border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .success-ai-icon svg { width: 22px; height: 22px; stroke: var(--success); fill: none; }
+  .success-ai-title { font-size: 16px; font-weight: 700; color: var(--text); margin-bottom: 2px; }
+  .success-ai-sub { font-size: 14px; color: var(--text2); line-height: 1.6; }
+
+  .appt-card { background: white; border-radius: 24px; padding: 24px; box-shadow: var(--shadow-lg); }
+  .appt-title { font-size: 20px; font-weight: 700; color: var(--text); text-align: center; padding-bottom: 16px; margin-bottom: 16px; border-bottom: 2px solid #F1F5F9; }
+  .appt-row { display: flex; align-items: flex-start; gap: 14px; }
+  .appt-row + .appt-row { margin-top: 18px; padding-top: 18px; border-top: 1px solid #F1F5F9; }
+  .appt-icon { flex-shrink: 0; }
+  .appt-icon .icon-box { width: 48px; height: 48px; border-radius: 14px; }
+  .appt-label { font-size: 13px; color: var(--text2); margin-bottom: 2px; }
+  .appt-value { font-size: 20px; font-weight: 700; color: var(--text); }
+  .appt-sub-value { font-size: 13px; color: var(--text2); margin-top: 2px; }
+
+  .success-footer { padding: 12px 24px 32px; flex-shrink: 0; }
+  .footer-row { display: flex; gap: 12px; margin-top: 12px; }
+  .footer-row .btn { flex: 1; font-size: 16px; min-height: 52px; padding: 14px; }
+
+  /* ══════════════════════════════
+     SCREEN 7 — ERROR
+  ══════════════════════════════ */
+  #screen-error { background: var(--bg); }
+  .error-body { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 0 24px 24px; }
+  .error-icon-wrap { position: relative; width: 130px; height: 130px; display: flex; align-items: center; justify-content: center; margin-bottom: 28px; }
+  .error-ring1 { position: absolute; width: 130px; height: 130px; background: rgba(220,38,38,0.08); border-radius: 50%; }
+  .error-ring2 { position: absolute; width: 110px; height: 110px; background: rgba(220,38,38,0.12); border-radius: 50%; }
+  .error-circle { position: relative; z-index: 2; width: 90px; height: 90px; background: var(--error); border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 8px 28px rgba(220,38,38,0.40); }
+  .error-circle svg { width: 52px; height: 52px; stroke: white; fill: none; stroke-width: 2.5; }
+  .error-title { font-size: 28px; font-weight: 700; color: var(--text); text-align: center; margin-bottom: 20px; }
+  .error-msg-card { background: white; border-radius: 24px; padding: 24px; box-shadow: var(--shadow-md); width: 100%; margin-bottom: 16px; }
+  .error-msg-inner { background: #FEF2F2; border: 2px solid rgba(220,38,38,0.2); border-radius: 14px; padding: 18px; }
+  .error-msg-text { font-size: 19px; color: var(--text); text-align: center; font-weight: 500; line-height: 1.6; margin-bottom: 8px; }
+  .error-hint { font-size: 16px; color: var(--text2); text-align: center; line-height: 1.6; }
+  .recovery-card { background: var(--primary-light); border: 2px solid rgba(37,99,235,0.25); border-radius: 16px; padding: 18px; width: 100%; margin-bottom: 28px; }
+  .recovery-title { font-size: 17px; font-weight: 600; color: var(--text); text-align: center; margin-bottom: 14px; }
+  .recovery-step { display: flex; align-items: flex-start; gap: 12px; }
+  .recovery-step + .recovery-step { margin-top: 12px; }
+  .recovery-num { width: 26px; height: 26px; background: var(--primary); border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .recovery-num span { color: white; font-size: 12px; font-weight: 700; }
+  .recovery-text { font-size: 15px; color: var(--text); line-height: 1.6; }
+  .error-actions { width: 100%; display: flex; flex-direction: column; gap: 14px; }
+
+  /* ══════════════════════════════
+     SCREEN 8 — SETTINGS
+  ══════════════════════════════ */
+  #screen-settings { background: var(--bg); }
+  .settings-list { flex: 1; padding: 0 24px; overflow-y: auto; display: flex; flex-direction: column; gap: 16px; }
+  .setting-card { background: white; border-radius: 24px; padding: 22px; box-shadow: var(--shadow-md); }
+  .setting-row { display: flex; align-items: center; gap: 14px; }
+  .setting-icon { width: 56px; height: 56px; background: rgba(37,99,235,0.1); border-radius: 18px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .setting-icon svg { width: 28px; height: 28px; stroke: var(--primary); fill: none; stroke-width: 2; }
+  .setting-info { flex: 1; }
+  .setting-name { font-size: 19px; font-weight: 600; color: var(--text); }
+  .setting-desc { font-size: 15px; color: var(--text2); margin-top: 2px; }
+  .toggle-btn {
+    width: 64px; height: 36px; border-radius: 18px; border: none; cursor: pointer;
+    position: relative; transition: background 0.3s; flex-shrink: 0;
+    background: #CBD5E1;
+  }
+  .toggle-btn.on { background: var(--success); }
+  .toggle-thumb {
+    position: absolute; top: 4px;
+    width: 28px; height: 28px; background: white; border-radius: 50%;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.25);
+    transition: transform 0.3s;
+    right: 4px;
+  }
+  .toggle-btn.on .toggle-thumb { transform: translateX(-28px); right: 4px; }
+
+  /* slider */
+  .slider-wrap { margin-top: 18px; padding: 0 4px; }
+  .size-label { font-size: 15px; color: var(--text2); margin-bottom: 8px; }
+  input[type=range] {
+    width: 100%; height: 12px; border-radius: 6px; outline: none;
+    -webkit-appearance: none; appearance: none;
+    cursor: pointer;
+  }
+  input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none; appearance: none;
+    width: 28px; height: 28px; border-radius: 50%;
+    background: var(--primary); cursor: pointer;
+    box-shadow: 0 2px 8px rgba(37,99,235,0.4);
+  }
+  .slider-labels { display: flex; justify-content: space-between; margin-top: 8px; }
+  .slider-labels span { font-size: 13px; color: var(--text2); }
+
+  .info-card-blue {
+    background: var(--primary-light); border: 2px solid rgba(37,99,235,0.25);
+    border-radius: 18px; padding: 18px; display: flex; align-items: flex-start; gap: 12px;
+  }
+  .info-card-blue svg { width: 24px; height: 24px; stroke: var(--primary); fill: none; flex-shrink: 0; margin-top: 2px; }
+  .info-card-title { font-size: 17px; font-weight: 600; color: var(--text); margin-bottom: 6px; }
+  .info-card-text { font-size: 15px; color: var(--text2); line-height: 1.6; }
+
+  /* ══════════════════════════════
+     MODAL
+  ══════════════════════════════ */
+  .modal-overlay {
+    position: absolute; inset: 0;
+    background: rgba(0,0,0,0.6);
+    display: flex; align-items: center; justify-content: center;
+    padding: 28px; z-index: 200;
+    opacity: 0; pointer-events: none;
+    transition: opacity 0.25s;
+  }
+  .modal-overlay.visible { opacity: 1; pointer-events: all; }
+  .modal-box {
+    background: white; border-radius: 28px; padding: 32px; width: 100%;
+    box-shadow: var(--shadow-xl);
+    transform: scale(0.92) translateY(20px);
+    transition: transform 0.25s;
+  }
+  .modal-overlay.visible .modal-box { transform: scale(1) translateY(0); }
+  .modal-ai-icon {
+    width: 68px; height: 68px;
+    background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+    border-radius: 50%; display: flex; align-items: center; justify-content: center;
+    margin: 0 auto 16px; box-shadow: 0 6px 20px rgba(37,99,235,0.4);
+  }
+  .modal-ai-icon svg { width: 34px; height: 34px; stroke: white; fill: none; }
+  .modal-title { font-size: 26px; font-weight: 700; color: var(--text); text-align: center; margin-bottom: 10px; }
+  .modal-sub { font-size: 17px; color: var(--text2); text-align: center; line-height: 1.6; margin-bottom: 24px; }
+  .modal-actions { display: flex; flex-direction: column; gap: 14px; }
+
+  /* ══════════════════════════════
+     CONFETTI
+  ══════════════════════════════ */
+  .confetti-canvas {
+    position: absolute; inset: 0; pointer-events: none; z-index: 10;
+    border-radius: 42px; overflow: hidden;
+  }
+</style>
+</head>
+<body>
+
+<div class="phone-wrapper">
+  <!-- Navigation bar above phone -->
+  <div class="nav-bar">
+    <button class="nav-btn active" onclick="navigate('welcome', this)">الترحيب</button>
+    <button class="nav-btn" onclick="navigate('overview', this)">نظرة عامة</button>
+    <button class="nav-btn" onclick="navigate('hospital', this)">المستشفى</button>
+    <button class="nav-btn" onclick="navigate('date', this)">التاريخ</button>
+    <button class="nav-btn" onclick="navigate('ai', this)">توجيه الذكاء</button>
+    <button class="nav-btn" onclick="navigate('success', this)">نجاح</button>
+    <button class="nav-btn" onclick="navigate('error', this)">خطأ</button>
+    <button class="nav-btn" onclick="navigate('settings', this)">الإعدادات</button>
+  </div>
+
+  <!-- Phone Frame -->
+  <div class="phone-frame">
+    <div class="phone-notch"></div>
+    <div class="phone-screen">
+      <div class="screens">
+
+        <!-- SCREEN 1: WELCOME -->
+        <div class="screen active" id="screen-welcome">
+          <div class="status-bar">
+            <span class="status-time">9:41</span>
+            <div class="status-icons">
+              <svg viewBox="0 0 24 24"><rect x="2" y="8" width="4" height="12" rx="1"/><rect x="7" y="5" width="4" height="15" rx="1"/><rect x="12" y="2" width="4" height="18" rx="1"/></svg>
+              <svg viewBox="0 0 24 24"><path d="M1 6s4-4 11-4 11 4 11 4"/><path d="M4 9s3-3 8-3 8 3 8 3"/><path d="M7 12s2-2 5-2 5 2 5 2"/><circle cx="12" cy="16" r="2"/></svg>
+              <svg viewBox="0 0 24 24"><rect x="3" y="9" width="16" height="9" rx="2"/><path d="M19 12h2a1 1 0 0 1 1 1v2a1 1 0 0 1-1 1h-2"/><rect x="5" y="11" width="8" height="5" rx="1" fill="currentColor"/></svg>
+            </div>
+          </div>
+          <div class="welcome-body">
+            <div class="hero-illustration">
+              <div class="hero-ring-outer"></div>
+              <div class="hero-ring-mid"></div>
+              <div class="hero-circle">
+                <svg viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+              </div>
+              <div class="ai-badge">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:var(--primary);width:16px;height:16px;"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/></svg>
+                <span>بمساعدة الذكاء الاصطناعي</span>
+              </div>
+            </div>
+            <h1 class="welcome-title">مرحبًا بك</h1>
+            <p class="welcome-sub">سنساعدك في حجز موعدك بسهولة</p>
+            <div class="welcome-helper">
+              <p>المساعد الذكي سيرشدك خطوة بخطوة</p>
+            </div>
+          </div>
+          <div class="welcome-actions">
+            <button class="btn btn-primary" onclick="navigate('overview')">ابدأ الآن</button>
+            <button class="btn btn-outline" style="font-size:18px;">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>
+              استماع للتعليمات الصوتية
+            </button>
+            <!-- Font Size Button -->
+            <div class="font-size-btn">
+              <div class="font-size-btn-left">
+                <svg viewBox="0 0 24 24" stroke-width="2"><polyline points="4 7 4 4 20 4 20 7"/><line x1="9" y1="20" x2="15" y2="20"/><line x1="12" y1="4" x2="12" y2="20"/></svg>
+                <span class="font-size-btn-label" id="welcome-font-label">حجم الخط</span>
+              </div>
+              <div class="font-size-controls">
+                <div class="fsize-circle" onclick="changeFontSize(-1)" title="تصغير">−</div>
+                <div class="fsize-current" id="welcome-font-display">أأ</div>
+                <div class="fsize-circle" onclick="changeFontSize(1)" title="تكبير">+</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- SCREEN 2: OVERVIEW -->
+        <div class="screen" id="screen-overview">
+          <div class="status-bar"><span class="status-time">9:41</span><div class="status-icons"><svg viewBox="0 0 24 24"><rect x="2" y="8" width="4" height="12" rx="1"/><rect x="7" y="5" width="4" height="15" rx="1"/><rect x="12" y="2" width="4" height="18" rx="1"/></svg></div></div>
+          <div class="overview-body">
+            <div class="overview-header">
+              <div class="overview-title-row">
+                <div class="overview-icon">
+                  <svg viewBox="0 0 24 24"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/></svg>
+                </div>
+                <h1 class="overview-main-title">حجز موعد صحي</h1>
+              </div>
+              <p class="overview-subtitle">سنرشدك خطوة بخطوة لإكمال الحجز بسهولة</p>
+            </div>
+            <div class="ai-helper-card">
+              <svg class="sparkle-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/></svg>
+              <div class="ai-inner">
+                <div class="ai-title">المساعد الذكي معك</div>
+                <div class="ai-sub">سأساعدك في كل خطوة وأشرح لك جميع الخيارات</div>
+              </div>
+              <button class="volume-btn">
+                <svg viewBox="0 0 24 24"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>
+              </button>
+            </div>
+            <div class="steps-card">
+              <div class="step-row">
+                <div class="step-icon-wrap">
+                  <svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+                </div>
+                <div class="step-label">اختيار المستشفى</div>
+                <div class="step-num"><span>1</span></div>
+              </div>
+              <div class="step-row">
+                <div class="step-icon-wrap">
+                  <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                </div>
+                <div class="step-label">اختيار الموعد</div>
+                <div class="step-num"><span>2</span></div>
+              </div>
+              <div class="step-row">
+                <div class="step-icon-wrap">
+                  <svg viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+                </div>
+                <div class="step-label">تأكيد الحجز</div>
+                <div class="step-num"><span>3</span></div>
+              </div>
+            </div>
+            <div class="progress-dots" style="margin-bottom:24px;">
+              <div class="dot active"></div>
+              <div class="dot"></div>
+              <div class="dot"></div>
+            </div>
+            <div style="margin-top:auto;">
+              <button class="btn btn-primary" onclick="navigate('hospital')">متابعة</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- SCREEN 3: SELECT HOSPITAL -->
+        <div class="screen" id="screen-hospital">
+          <div class="status-bar"><span class="status-time">9:41</span><div class="status-icons"></div></div>
+          <div class="screen-header">
+            <button class="back-btn" onclick="navigate('overview')">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+            </button>
+            <span class="screen-title">اختيار المستشفى</span>
+            <div style="width:48px;"></div>
+          </div>
+          <div style="padding:0 24px 14px;">
+            <div class="ai-card">
+              <div class="ai-row">
+                <svg class="sparkle-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/></svg>
+                <p class="ai-text">اخترنا المستشفيات الأقرب لموقعك</p>
+              </div>
+            </div>
+          </div>
+          <div class="search-wrap">
+            <input class="search-input" type="text" placeholder="ابحث عن مستشفى">
+            <svg class="search-icon" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          </div>
+          <div class="hospital-list" id="hospital-list">
+            <div class="hospital-card" onclick="selectHospital(this, '1')">
+              <div class="hospital-icon">
+                <svg viewBox="0 0 24 24"><path d="M12 2l2.4 7.4H22l-6.2 4.5 2.4 7.4L12 17l-6.2 4.3 2.4-7.4L2 9.4h7.6z"/></svg>
+              </div>
+              <div class="hospital-info">
+                <div class="hospital-name">مستشفى الملك فهد</div>
+                <div class="hospital-meta">
+                  <div class="hospital-dist">
+                    <svg viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+                    2.5 كم
+                  </div>
+                  <span class="hospital-rating">ممتاز</span>
+                </div>
+              </div>
+            </div>
+            <div class="hospital-card" onclick="selectHospital(this, '2')">
+              <div class="hospital-icon">
+                <svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M12 8v8M8 12h8"/></svg>
+              </div>
+              <div class="hospital-info">
+                <div class="hospital-name">المستشفى الجامعي</div>
+                <div class="hospital-meta">
+                  <div class="hospital-dist">
+                    <svg viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+                    3.8 كم
+                  </div>
+                  <span class="hospital-rating">جيد جداً</span>
+                </div>
+              </div>
+            </div>
+            <div class="hospital-card" onclick="selectHospital(this, '3')">
+              <div class="hospital-icon">
+                <svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
+              </div>
+              <div class="hospital-info">
+                <div class="hospital-name">المركز الصحي</div>
+                <div class="hospital-meta">
+                  <div class="hospital-dist">
+                    <svg viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+                    5.2 كم
+                  </div>
+                  <span class="hospital-rating">جيد</span>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="screen-footer">
+            <button class="btn btn-disabled" id="hospital-next-btn" onclick="if(selectedHospital) navigate('date')">اختر مستشفى للمتابعة</button>
+          </div>
+        </div>
+
+        <!-- SCREEN 4: SELECT DATE -->
+        <div class="screen" id="screen-date">
+          <div class="status-bar"><span class="status-time">9:41</span><div class="status-icons"></div></div>
+          <div class="screen-header">
+            <button class="back-btn" onclick="navigate('hospital')">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+            </button>
+            <span class="screen-title">اختر التاريخ المناسب</span>
+            <div style="width:48px;"></div>
+          </div>
+          <div style="padding:0 24px 14px;">
+            <div class="ai-card">
+              <div class="ai-row">
+                <svg class="sparkle-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/></svg>
+                <p class="ai-text">التواريخ باللون الأزرق متاحة للحجز</p>
+              </div>
+            </div>
+          </div>
+          <div class="calendar-wrap">
+            <div class="cal-card">
+              <div class="cal-header">
+                <button class="cal-nav">
+                  <svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>
+                </button>
+                <span class="cal-month">مايو 2026</span>
+                <button class="cal-nav">
+                  <svg viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg>
+                </button>
+              </div>
+              <div class="cal-dow">
+                <div class="cal-dow-cell">أحد</div>
+                <div class="cal-dow-cell">إثن</div>
+                <div class="cal-dow-cell">ثلث</div>
+                <div class="cal-dow-cell">أربع</div>
+                <div class="cal-dow-cell">خمس</div>
+                <div class="cal-dow-cell">جمع</div>
+                <div class="cal-dow-cell">سبت</div>
+              </div>
+              <div class="cal-grid" id="cal-grid">
+                <!-- Generated by JS -->
+              </div>
+              <div id="selected-info" style="display:none;" class="selected-info">
+                <div class="label">التاريخ المحدد</div>
+                <div class="value" id="selected-date-text"></div>
+              </div>
+              <div class="cal-legend">
+                <div class="legend-row"><span>متاح</span><div class="legend-dot" style="background:rgba(37,99,235,0.15);"></div></div>
+                <div class="legend-row"><span>محجوز</span><div class="legend-dot" style="background:#F1F5F9;"></div></div>
+              </div>
+            </div>
+          </div>
+          <div class="two-btn-footer">
+            <button class="btn btn-outline-gray" onclick="navigate('hospital')">رجوع</button>
+            <button class="btn btn-disabled" id="date-next-btn" onclick="if(selectedDate) navigate('ai')">اختر تاريخاً</button>
+          </div>
+        </div>
+
+        <!-- SCREEN 5: AI GUIDANCE -->
+        <div class="screen" id="screen-ai">
+          <div class="status-bar"><span class="status-time">9:41</span><div class="status-icons"></div></div>
+          <div class="ai-screen-header">
+            <div class="ai-title-row">
+              <div class="ai-icon">
+                <svg viewBox="0 0 24 24"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/></svg>
+              </div>
+              <h1 class="ai-main-title">تأكيد الموعد</h1>
+            </div>
+            <p class="ai-screen-sub">المساعد الذكي يرشدك</p>
+          </div>
+          <div class="ai-content">
+            <div class="speech-bubble">
+              <div class="bubble-top">
+                <div class="bubble-check">
+                  <svg viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+                </div>
+                <div style="flex:1;">
+                  <div class="bubble-main">اخترنا لك أفضل موعد متاح</div>
+                  <div class="bubble-sub">هذا الموعد له أقصر وقت انتظار ومتاح بسرعة</div>
+                </div>
+                <button class="volume-btn" style="flex-shrink:0;">
+                  <svg viewBox="0 0 24 24"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></svg>
+                </button>
+              </div>
+              <div class="why-box">
+                <div class="why-title">
+                  <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                  لماذا هذا الموعد؟
+                </div>
+                <div class="why-list">
+                  • أقرب مستشفى لموقعك<br>
+                  • لا يوجد مواعيد أسرع متاحة<br>
+                  • يمكنك التعديل في أي وقت
+                </div>
+              </div>
+            </div>
+            <div class="bounce-arrow">
+              <svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><polyline points="19 12 12 19 5 12"/></svg>
+            </div>
+            <div class="step-label-row">
+              <div class="step-badge blue"><span>1</span></div>
+              <span class="step-label-text">راجع تفاصيل موعدك</span>
+            </div>
+            <div class="details-highlight">
+              <div class="highlight-ring"></div>
+              <div class="details-inner">
+                <div class="detail-row">
+                  <div class="detail-label">المستشفى</div>
+                  <div class="detail-value">مستشفى الملك فهد</div>
+                </div>
+                <div class="detail-row">
+                  <div class="detail-label">التاريخ</div>
+                  <div class="detail-value">الأحد، 17 مايو 2026</div>
+                </div>
+                <div class="detail-row">
+                  <div class="detail-label">الوقت</div>
+                  <div class="detail-value">10:00 صباحًا</div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="ai-footer">
+            <div class="step-label-row" style="margin-bottom:12px;">
+              <div class="step-badge green"><span>2</span></div>
+              <span class="step-label-text">اضغط لتأكيد الحجز</span>
+            </div>
+            <div style="display:flex; flex-direction:column; gap:12px;">
+              <div class="confirm-btn-wrap">
+                <div class="glow-ring"></div>
+                <button class="btn btn-success" style="position:relative;font-size:22px;padding:22px;" onclick="showModal()">
+                  <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+                  تأكيد الحجز
+                </button>
+              </div>
+              <button class="btn btn-outline-gray" style="font-size:17px;" onclick="navigate('date')">تعديل الموعد</button>
+            </div>
+          </div>
+
+          <!-- Confirmation Modal -->
+          <div class="modal-overlay" id="confirm-modal">
+            <div class="modal-box">
+              <div class="modal-ai-icon">
+                <svg viewBox="0 0 24 24"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/></svg>
+              </div>
+              <div class="modal-title">هل أنت متأكد؟</div>
+              <div class="modal-sub">سيتم تأكيد موعدك في مستشفى الملك فهد<br><small style="color:#94A3B8;">لن يتم الحجز حتى تضغط على تأكيد</small></div>
+              <div class="modal-actions">
+                <button class="btn btn-success" style="font-size:22px;padding:20px;" onclick="confirmBooking()">
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+                  نعم، أكّد الحجز
+                </button>
+                <button class="btn btn-outline-gray" onclick="hideModal()">لا، رجوع</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- SCREEN 6: SUCCESS -->
+        <div class="screen" id="screen-success">
+          <canvas class="confetti-canvas" id="confetti-canvas"></canvas>
+          <div class="status-bar"><span class="status-time">9:41</span><div class="status-icons"></div></div>
+          <div class="success-top">
+            <div class="success-icon-wrap">
+              <div class="success-pulse"></div>
+              <div class="success-circle">
+                <svg viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+              </div>
+            </div>
+            <div class="success-title">تم حجز موعدك بنجاح!</div>
+            <div class="success-sub">سنراك قريبًا</div>
+          </div>
+          <div class="success-content">
+            <div class="success-ai-card" style="margin-bottom:16px;">
+              <div class="success-ai-icon">
+                <svg viewBox="0 0 24 24"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/></svg>
+              </div>
+              <div>
+                <div class="success-ai-title">تم تأكيد موعدك</div>
+                <div class="success-ai-sub">سنرسل لك رسالة تذكير قبل الموعد</div>
+              </div>
+            </div>
+            <div class="appt-card">
+              <div class="appt-title">تفاصيل موعدك</div>
+              <div class="appt-row">
+                <div class="appt-icon"><div class="icon-box" style="background:#EFF6FF;"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg></div></div>
+                <div>
+                  <div class="appt-label">المستشفى</div>
+                  <div class="appt-value">مستشفى الملك فهد</div>
+                  <div class="appt-sub-value">الرياض، حي النخيل</div>
+                </div>
+              </div>
+              <div class="appt-row">
+                <div class="appt-icon"><div class="icon-box" style="background:#F0FDF4;"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#16A34A" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></div></div>
+                <div>
+                  <div class="appt-label">التاريخ</div>
+                  <div class="appt-value">الأحد، 17 مايو 2026</div>
+                </div>
+              </div>
+              <div class="appt-row">
+                <div class="appt-icon"><div class="icon-box" style="background:#F5F3FF;"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#8b5cf6" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div></div>
+                <div>
+                  <div class="appt-label">الوقت</div>
+                  <div class="appt-value">10:00 صباحًا</div>
+                </div>
+              </div>
+              <div class="appt-row">
+                <div class="appt-icon"><div class="icon-box" style="background:#FFF7ED;"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#f97316" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg></div></div>
+                <div>
+                  <div class="appt-label">رقم الحجز</div>
+                  <div class="appt-value">#12345678</div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="success-footer">
+            <button class="btn btn-primary" onclick="navigate('welcome')">العودة للرئيسية</button>
+            <div class="footer-row">
+              <button class="btn btn-outline" style="color:var(--success);border-color:var(--success);">مشاركة</button>
+              <button class="btn btn-outline">حفظ</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- SCREEN 7: ERROR -->
+        <div class="screen" id="screen-error">
+          <div class="status-bar"><span class="status-time">9:41</span><div class="status-icons"></div></div>
+          <div class="error-body">
+            <div class="error-icon-wrap">
+              <div class="error-ring1"></div>
+              <div class="error-ring2"></div>
+              <div class="error-circle">
+                <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16" stroke-width="3"/></svg>
+              </div>
+            </div>
+            <h1 class="error-title">عذرًا، حدث خطأ</h1>
+            <div class="error-msg-card">
+              <div class="error-msg-inner">
+                <p class="error-msg-text">رقم الهوية يجب أن يحتوي على 10 أرقام</p>
+                <p class="error-hint">الرجاء التأكد من إدخال رقم الهوية بشكل صحيح</p>
+              </div>
+            </div>
+            <div class="recovery-card">
+              <div class="recovery-title">كيفية إصلاح المشكلة</div>
+              <div class="recovery-step">
+                <div class="recovery-num"><span>1</span></div>
+                <div class="recovery-text">تأكد من إدخال 10 أرقام فقط</div>
+              </div>
+              <div class="recovery-step">
+                <div class="recovery-num"><span>2</span></div>
+                <div class="recovery-text">لا تستخدم مسافات أو رموز</div>
+              </div>
+              <div class="recovery-step">
+                <div class="recovery-num"><span>3</span></div>
+                <div class="recovery-text">اضغط على "إعادة المحاولة" أدناه</div>
+              </div>
+            </div>
+            <div class="error-actions">
+              <button class="btn btn-primary" onclick="navigate('hospital')">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3.25"/></svg>
+                إعادة المحاولة
+              </button>
+              <button class="btn btn-outline" onclick="navigate('settings')">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                المساعدة
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- SCREEN 8: ACCESSIBILITY SETTINGS -->
+        <div class="screen" id="screen-settings">
+          <div class="status-bar"><span class="status-time">9:41</span><div class="status-icons"></div></div>
+          <div class="screen-header">
+            <button class="back-btn" onclick="navigate('welcome')">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+            </button>
+            <span class="screen-title" style="font-size:19px;">إعدادات إمكانية الوصول</span>
+            <div style="width:48px;"></div>
+          </div>
+          <div class="settings-list">
+            <!-- Font size -->
+            <div class="setting-card">
+              <div class="setting-row">
+                <div class="setting-icon"><svg viewBox="0 0 24 24"><polyline points="4 7 4 4 20 4 20 7"/><line x1="9" y1="20" x2="15" y2="20"/><line x1="12" y1="4" x2="12" y2="20"/></svg></div>
+                <div class="setting-info">
+                  <div class="setting-name">تكبير الخط</div>
+                  <div class="setting-desc" id="font-label">حجم النص الحالي: 18px</div>
+                </div>
+              </div>
+              <div class="slider-wrap">
+                <input type="range" min="14" max="24" step="2" value="18" id="font-slider" oninput="updateFontSize(this.value)" style="background:linear-gradient(to left, var(--primary) 40%, #e5e7eb 40%);">
+                <div class="slider-labels"><span>كبير</span><span>صغير</span></div>
+              </div>
+            </div>
+            <!-- Voice -->
+            <div class="setting-card">
+              <div class="setting-row">
+                <div class="setting-icon"><svg viewBox="0 0 24 24"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/></svg></div>
+                <div class="setting-info">
+                  <div class="setting-name">تشغيل المساعد الصوتي</div>
+                  <div class="setting-desc">قراءة التعليمات صوتيًا</div>
+                </div>
+                <button class="toggle-btn" id="toggle-voice" onclick="toggleSetting(this)">
+                  <div class="toggle-thumb"></div>
+                </button>
+              </div>
+            </div>
+            <!-- High Contrast -->
+            <div class="setting-card">
+              <div class="setting-row">
+                <div class="setting-icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 2a10 10 0 0 1 0 20z"/></svg></div>
+                <div class="setting-info">
+                  <div class="setting-name">الوضع عالي التباين</div>
+                  <div class="setting-desc">لتحسين وضوح النصوص</div>
+                </div>
+                <button class="toggle-btn" id="toggle-contrast" onclick="toggleSetting(this)">
+                  <div class="toggle-thumb"></div>
+                </button>
+              </div>
+            </div>
+            <!-- Simplified UI -->
+            <div class="setting-card">
+              <div class="setting-row">
+                <div class="setting-icon"><svg viewBox="0 0 24 24"><polyline points="5 9 2 12 5 15"/><polyline points="19 9 22 12 19 15"/><line x1="2" y1="12" x2="22" y2="12"/></svg></div>
+                <div class="setting-info">
+                  <div class="setting-name">تبسيط الواجهة</div>
+                  <div class="setting-desc">عرض العناصر الأساسية فقط</div>
+                </div>
+                <button class="toggle-btn" id="toggle-simplified" onclick="toggleSetting(this)">
+                  <div class="toggle-thumb"></div>
+                </button>
+              </div>
+            </div>
+            <!-- Info -->
+            <div class="info-card-blue">
+              <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M4.93 4.93a10 10 0 0 0 0 14.14M8.46 8.46a5 5 0 0 0 0 7.07"/></svg>
+              <div>
+                <div class="info-card-title">إعدادات مخصصة لراحتك</div>
+                <div class="info-card-text">يمكنك تعديل هذه الإعدادات في أي وقت لتحسين تجربتك</div>
+              </div>
+            </div>
+          </div>
+          <div class="screen-footer" style="margin-top:16px;">
+            <button class="btn btn-primary" onclick="navigate('welcome')">حفظ الإعدادات</button>
+          </div>
+        </div>
+
+      </div><!-- end .screens -->
+    </div><!-- end .phone-screen -->
+  </div><!-- end .phone-frame -->
+</div><!-- end .phone-wrapper -->
+
+<script>
+// ── State ──
+let currentScreen = 'welcome';
+let selectedHospital = null;
+let selectedDate = null;
+
+// ── Navigation ──
+function navigate(screenId, navBtnEl) {
+  const current = document.getElementById('screen-' + currentScreen);
+  const next = document.getElementById('screen-' + screenId);
+  if (!next || currentScreen === screenId) return;
+
+  current.classList.add('slide-out');
+  setTimeout(() => {
+    current.classList.remove('active', 'slide-out');
+    next.classList.add('active');
+    currentScreen = screenId;
+
+    // confetti on success
+    if (screenId === 'success') {
+      setTimeout(launchConfetti, 300);
+    }
+  }, 250);
+
+  // Update nav bar
+  if (navBtnEl) {
+    document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+    navBtnEl.classList.add('active');
+  } else {
+    const screenMap = {
+      welcome:'الترحيب', overview:'نظرة عامة', hospital:'المستشفى',
+      date:'التاريخ', ai:'توجيه الذكاء', success:'نجاح', error:'خطأ', settings:'الإعدادات'
+    };
+    document.querySelectorAll('.nav-btn').forEach(b => {
+      if (b.textContent.trim() === screenMap[screenId]) b.classList.add('active');
+      else b.classList.remove('active');
+    });
+  }
+}
+
+// ── Hospital Selection ──
+function selectHospital(card, id) {
+  document.querySelectorAll('.hospital-card').forEach(c => {
+    c.classList.remove('selected');
+    const check = c.querySelector('.check-badge');
+    if (check) check.remove();
+  });
+  card.classList.add('selected');
+  selectedHospital = id;
+
+  // Add check badge
+  const check = document.createElement('div');
+  check.className = 'check-badge';
+  check.innerHTML = '<svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>';
+  card.appendChild(check);
+
+  const btn = document.getElementById('hospital-next-btn');
+  btn.className = 'btn btn-primary';
+  btn.textContent = 'التالي';
+}
+
+// ── Calendar Generation ──
+const days = [
+  {d:null,a:false},{d:null,a:false},{d:null,a:false},{d:null,a:false},{d:null,a:false},
+  {d:1,a:false},{d:2,a:false},
+  {d:3,a:false},{d:4,a:false},{d:5,a:false},{d:6,a:false},{d:7,a:false},{d:8,a:false},{d:9,a:false},
+  {d:10,a:false},{d:11,a:false},{d:12,a:false},{d:13,a:false},{d:14,a:false},{d:15,a:false},{d:16,a:true},
+  {d:17,a:true},{d:18,a:false},{d:19,a:true},{d:20,a:true},{d:21,a:false},{d:22,a:true},{d:23,a:true},
+  {d:24,a:true},{d:25,a:false},{d:26,a:true},{d:27,a:true},{d:28,a:false},{d:29,a:true},{d:30,a:true},
+  {d:31,a:false}
+];
+
+const dayNames = ['الأحد','الاثنين','الثلاثاء','الأربعاء','الخميس','الجمعة','السبت'];
+
+function buildCalendar() {
+  const grid = document.getElementById('cal-grid');
+  grid.innerHTML = '';
+  days.forEach((item, i) => {
+    const btn = document.createElement('button');
+    if (item.d === null) {
+      btn.className = 'cal-day empty';
+      btn.disabled = true;
+    } else if (!item.a) {
+      btn.className = 'cal-day unavailable';
+      btn.disabled = true;
+      btn.textContent = item.d;
+    } else {
+      btn.className = 'cal-day available';
+      btn.textContent = item.d;
+      btn.onclick = () => pickDate(btn, item.d, i);
+    }
+    grid.appendChild(btn);
+  });
+}
+
+function pickDate(btn, day, idx) {
+  document.querySelectorAll('.cal-day.selected').forEach(b => {
+    b.classList.remove('selected');
+    b.classList.add('available');
+  });
+  btn.classList.remove('available');
+  btn.classList.add('selected');
+  selectedDate = day;
+
+  // Show selected info
+  const info = document.getElementById('selected-info');
+  const dow = dayNames[(idx - 5 + 7 * 10) % 7]; // approximate
+  const dowMap = {16:'السبت',17:'الأحد',19:'الثلاثاء',20:'الأربعاء',22:'الجمعة',23:'السبت',24:'الأحد',26:'الثلاثاء',27:'الأربعاء',29:'الجمعة',30:'السبت'};
+  document.getElementById('selected-date-text').textContent = (dowMap[day] || '') + '، ' + day + ' مايو 2026';
+  info.style.display = 'block';
+
+  const nextBtn = document.getElementById('date-next-btn');
+  nextBtn.className = 'btn btn-primary';
+  nextBtn.textContent = 'التالي';
+}
+
+buildCalendar();
+
+// ── Modal ──
+function showModal() {
+  document.getElementById('confirm-modal').classList.add('visible');
+}
+function hideModal() {
+  document.getElementById('confirm-modal').classList.remove('visible');
+}
+function confirmBooking() {
+  hideModal();
+  navigate('success');
+}
+
+// ── Toggles ──
+function toggleSetting(btn) {
+  btn.classList.toggle('on');
+}
+
+// ── Font Slider (settings screen) ──
+function updateFontSize(val) {
+  document.getElementById('font-label').textContent = 'حجم النص الحالي: ' + val + 'px';
+  const pct = ((val - 14) / 10) * 100;
+  document.getElementById('font-slider').style.background =
+    `linear-gradient(to left, var(--primary) ${pct}%, #e5e7eb ${pct}%)`;
+}
+
+// ── Font Size Button (Welcome Screen) ──
+const fontSizeSteps = [14, 16, 18, 20, 22, 24, 28, 32, 36];
+let fontSizeIdx = 2; // starts at 18px
+
+function applyWelcomeFontSize() {
+  const px = fontSizeSteps[fontSizeIdx];
+  const screen = document.getElementById('screen-welcome');
+
+  const title = screen.querySelector('.welcome-title');
+  const sub = screen.querySelector('.welcome-sub');
+  const helper = screen.querySelector('.welcome-helper p');
+  const badge = screen.querySelector('.ai-badge span');
+  const btnLabel = screen.querySelector('#welcome-font-label');
+
+  if (title) title.style.fontSize = Math.round(px * 1.65) + 'px';
+  if (sub)   sub.style.fontSize   = px + 'px';
+  if (helper) helper.style.fontSize = Math.round(px * 0.88) + 'px';
+  if (badge)  badge.style.fontSize  = Math.round(px * 0.72) + 'px';
+  if (btnLabel) btnLabel.style.fontSize = Math.round(px * 0.9) + 'px';
+
+  // update display
+  const display = document.getElementById('welcome-font-display');
+  if (display) {
+    display.textContent = px + 'px';
+    display.style.fontSize = Math.min(Math.round(px * 0.72), 18) + 'px';
+  }
+
+  // visual feedback: pulse the + button blue on increase
+}
+
+function changeFontSize(dir) {
+  const newIdx = fontSizeIdx + dir;
+  if (newIdx < 0 || newIdx >= fontSizeSteps.length) {
+    // Shake the limit button
+    const circles = document.querySelectorAll('.fsize-circle');
+    const target = dir < 0 ? circles[0] : circles[1];
+    target.style.transition = 'transform 0.1s';
+    target.style.transform = 'scale(0.7)';
+    setTimeout(() => { target.style.transform = 'scale(1.15)'; }, 100);
+    setTimeout(() => { target.style.transform = ''; }, 200);
+    return;
+  }
+  fontSizeIdx = newIdx;
+  applyWelcomeFontSize();
+
+  // flash the + circle green on increase
+  if (dir > 0) {
+    const circles = document.querySelectorAll('.fsize-circle');
+    const plusBtn = circles[1];
+    plusBtn.style.background = 'var(--success)';
+    plusBtn.style.borderColor = 'var(--success)';
+    plusBtn.style.color = 'white';
+    setTimeout(() => {
+      plusBtn.style.background = '';
+      plusBtn.style.borderColor = '';
+      plusBtn.style.color = '';
+    }, 300);
+  }
+}
+
+applyWelcomeFontSize();
+
+// ── Confetti ──
+function launchConfetti() {
+  const canvas = document.getElementById('confetti-canvas');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  canvas.width = canvas.offsetWidth;
+  canvas.height = canvas.offsetHeight;
+
+  const particles = [];
+  const colors = ['#16A34A','#22c55e','#4ade80','#86efac','#2563EB','#60a5fa'];
+
+  for (let i = 0; i < 80; i++) {
+    particles.push({
+      x: Math.random() * canvas.width,
+      y: -10 - Math.random() * 100,
+      w: 6 + Math.random() * 8,
+      h: 4 + Math.random() * 6,
+      color: colors[Math.floor(Math.random() * colors.length)],
+      vx: (Math.random() - 0.5) * 3,
+      vy: 2 + Math.random() * 3,
+      rot: Math.random() * 360,
+      rotSpeed: (Math.random() - 0.5) * 6,
+    });
+  }
+
+  let frame = 0;
+  function animate() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    particles.forEach(p => {
+      p.x += p.vx;
+      p.y += p.vy;
+      p.vy += 0.05;
+      p.rot += p.rotSpeed;
+      ctx.save();
+      ctx.translate(p.x, p.y);
+      ctx.rotate(p.rot * Math.PI / 180);
+      ctx.fillStyle = p.color;
+      ctx.fillRect(-p.w/2, -p.h/2, p.w, p.h);
+      ctx.restore();
+    });
+    frame++;
+    if (frame < 120) requestAnimationFrame(animate);
+    else ctx.clearRect(0, 0, canvas.width, canvas.height);
+  }
+  animate();
+}
+</script>
+</body>
+</html>
